@@ -1,3 +1,34 @@
+/*
+ * Copyright (C) 2021. Jong B. Choi
+ * License : MIT License
+ * contact : neoflame99@naver.com
+ * reference: https://ms.sapientia.ro/~manyi/teaching/c++/CPP_v1.2.pdf, Margit ANTAL
+ *            www.cplusplus.com, www.cppreferenc.com and so on.
+ * remark :
+ *         1. Memory leak has been checked by valgrind with qtcreator IDE
+ *         2. use jbptr with jbptr_del functor
+ *             jbptr_del<T> and jbptr_del<T[]> are ready.
+ *         3. examples
+ *              1) jbptr ptr(new int(0));
+ *              2) jbptr ptr(new int(0), jbptr_del<int>() );
+ *              3) jbptr ptr(new int[5], jbptr_del<int[]>() );  //-> int type array
+ *              4) jbptr<int> a( new int(0) );
+ *              5) jbptr<int> b = a;
+ *              6) jbptr<int> c;
+ *                 c = a;
+ *
+ *              7) jbptr<int> a( new int(0) );
+ *                 std::cout << *(a) << endl;
+ *
+ *              8) jbptr ptr(new int[5], jbptr_del<int[]>() );
+ *                 ptr[1]= 10;
+ *
+ *              9) struct a_str { char* c_str; a_str(char* p):c_str(p){} };
+ *                 jbptr ptr_s ( new a_str("Hello World!") );
+ *                 cout << ptr_s->c_str << endl;
+ *
+ */
+
 #ifndef JBPTR_H
 #define JBPTR_H
 #include <stdio.h>
@@ -6,18 +37,18 @@
 typedef unsigned int  uint;
 typedef unsigned char uchar;
 
-// deleter functor
+// deleter functor for jbptr<T>
 template <typename T> struct jbptr_del{
-    void operator() (T* p){
+    constexpr void operator() (T* p){
         delete p;
 #ifdef _debug_
         std::cout << "jbptr_del<T> called "<< std::endl;
 #endif
     }
 };
-// deleter functor; partial specialization of jbptr_del
+// deleter functor for jbptr<T[]>; partial specialization of jbptr_del
 template <typename T> struct jbptr_del<T[]>{
-    void operator() (T* p){
+    constexpr void operator() (T* p){
         delete [] p;
 #ifdef _debug_
         std::cout << "jbptr_del<T[]> called "<< std::endl;
@@ -38,20 +69,20 @@ private:
             ptr = nullptr;
             cnt = nullptr;
 #ifdef _debug_
-            fprintf(stderr, " ptr has been deleted\n");
+            fprintf(stderr, "  ->ptr has been deleted\n");
 #endif
         }
     }
 public:
-    jbptr() : ptr(nullptr), cnt (new int(0)) {}
-    jbptr(T* ptr) : ptr( ptr), cnt( new int(1)){}
-    jbptr(T* ptr, Del del) : ptr( ptr), cnt( new int(1)), del(del){}
+    constexpr jbptr() : ptr(nullptr), cnt (new int(0)) {}
+    constexpr jbptr(T* ptr) : ptr( ptr), cnt( new int(1)){}
+    constexpr jbptr(T* ptr, Del del) : ptr( ptr), cnt( new int(1)), del(del){}
 
     // copy constructor
     jbptr(const jbptr<T>& tptr): ptr( tptr.ptr), cnt( tptr.cnt), del(tptr.del){
         ++(*cnt);
 #ifdef _debug_
-        fprintf(stderr, "copy constructor\n");
+        fprintf(stderr, "  ->copy constructor\n");
 #endif
     }
 
@@ -61,7 +92,7 @@ public:
         std::swap(cnt, tptr.cnt);
         std::swap(del, tptr.del);
 #ifdef _debug_
-        fprintf(stderr, "move constructor");
+        fprintf(stderr, "  ->move constructor");
 #endif
     }
 
@@ -69,7 +100,7 @@ public:
         if( *cnt > 0)
             --(*cnt);
 #ifdef _debug_
-        fprintf(stderr," ptrcnt : %d\n", *cnt);
+        fprintf(stderr, "  ->ptrcnt : %d\n", *cnt);
 #endif
         dealloc();
     }
@@ -91,7 +122,7 @@ public:
             ++(*cnt);
         }
 #ifdef _debug_
-        fprintf(stderr,"copy assignment\n");
+        fprintf(stderr,"  ->copy assignment\n");
 #endif
         return *this;
     }
@@ -102,23 +133,23 @@ public:
         std::swap(cnt, tptr.cnt);
         std::swap(del, tptr.del);
 #ifdef _debug_
-        fprintf(stderr,"move assignment\n");
+        fprintf(stderr,"  ->move assignment\n");
 #endif
         return *this;
     }
 
-    const T& operator[] (uint i) const{
+    constexpr T& operator[] (uint i) const{
         return ptr[i];
     }
-    T& operator[] (uint i) {
+    constexpr T& operator[] (uint i) {
         return ptr[i];
     }
 
-    T& operator* (){
+    constexpr T& operator* (){
         return *ptr;
     }
 
-    T* operator-> (){
+    constexpr T* operator-> (){
         return ptr;
     }
 
