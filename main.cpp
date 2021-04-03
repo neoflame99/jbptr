@@ -82,6 +82,7 @@ int main()
         cb[i] = cmplx(i, i+2);
     }
 
+    cout << endl;
     for(int i=0; i < 3; ++i)
         cout << cb[i];
 
@@ -90,6 +91,21 @@ int main()
     char buf[] = "Hello World";
     jbptr pstr (new a_str(buf));
     cout << pstr->c_str << endl;
+
+
+    cmplx *pcc = new cmplx[4];
+    cb.reset(pcc, jbptr_del<cmplx[]>() );
+
+    for(int i=0; i < 4; ++i){
+        *cb[i].re = i+10;
+        *cb[i].im = i+12;
+    }
+    cout << endl;
+    for(int i=0; i < 4; ++i)
+        cout << cb[i];
+
+    cmplx *pcb0 = cb.get();
+    cout << "\nget pointer by get() method: " << *pcb0 << endl;
 
     return 0;
 }

@@ -42,7 +42,7 @@ template <typename T> struct jbptr_del{
     constexpr void operator() (T* p){
         delete p;
 #ifdef _debug_
-        std::cout << "jbptr_del<T> called "<< std::endl;
+        std::cerr << "jbptr_del<T> called "<< std::endl;
 #endif
     }
 };
@@ -51,7 +51,7 @@ template <typename T> struct jbptr_del<T[]>{
     constexpr void operator() (T* p){
         delete [] p;
 #ifdef _debug_
-        std::cout << "jbptr_del<T[]> called "<< std::endl;
+        std::cerr << "jbptr_del<T[]> called "<< std::endl;
 #endif
     }
 };
@@ -62,17 +62,26 @@ private:
     int *cnt = nullptr;
     Del  del ;
 private:
-    void dealloc(){
+    constexpr void dealloc(){
         if( *cnt <= 0){
             if( ptr!= nullptr ) del(ptr);
             delete cnt;
             ptr = nullptr;
             cnt = nullptr;
 #ifdef _debug_
-            fprintf(stderr, "  ->ptr has been deleted\n");
+            std::cerr << "  ->ptr has been deleted\n";
 #endif
         }
     }
+    constexpr void finalize(){
+        if( *cnt > 0)
+            --(*cnt);
+#ifdef _debug_
+        std::cerr<< "  ->ptrcnt : " << *cnt << std::endl;
+#endif
+        dealloc();
+    }
+
 public:
     constexpr jbptr() : ptr(nullptr), cnt (new int(0)) {}
     constexpr jbptr(T* ptr) : ptr( ptr), cnt( new int(1)){}
@@ -82,7 +91,7 @@ public:
     jbptr(const jbptr<T>& tptr): ptr( tptr.ptr), cnt( tptr.cnt), del(tptr.del){
         ++(*cnt);
 #ifdef _debug_
-        fprintf(stderr, "  ->copy constructor\n");
+        std::cerr << "  ->copy constructor\n";
 #endif
     }
 
@@ -92,37 +101,25 @@ public:
         std::swap(cnt, tptr.cnt);
         std::swap(del, tptr.del);
 #ifdef _debug_
-        fprintf(stderr, "  ->move constructor");
+        std::cerr << "  ->move constructor\n";
 #endif
     }
 
     ~jbptr() {
-        if( *cnt > 0)
-            --(*cnt);
-#ifdef _debug_
-        fprintf(stderr, "  ->ptrcnt : %d\n", *cnt);
-#endif
-        dealloc();
+        finalize();
     }
 
     // copy assignment
     jbptr<T, Del>& operator= ( const jbptr<T, Del>& tptr){
         if( this != &tptr ){
-            if(*cnt == 0){
-                dealloc();
-            }else if(*cnt == 1){
-                --(*cnt);
-                dealloc();
-            }else{
-                --(*cnt);
-            }
+            finalize();
             ptr = tptr.ptr;
             cnt = tptr.cnt;
             del = tptr.del;
             ++(*cnt);
         }
 #ifdef _debug_
-        fprintf(stderr,"  ->copy assignment\n");
+        std::cerr << "  ->copy assignment\n";
 #endif
         return *this;
     }
@@ -133,7 +130,7 @@ public:
         std::swap(cnt, tptr.cnt);
         std::swap(del, tptr.del);
 #ifdef _debug_
-        fprintf(stderr,"  ->move assignment\n");
+        std::cerr << "  ->move assignment\n";
 #endif
         return *this;
     }
@@ -153,6 +150,23 @@ public:
         return ptr;
     }
 
+    constexpr T* get() const{
+        return ptr;
+    }
+
+    constexpr void reset(T* ptr, Del del){
+        if( this->ptr != ptr){
+            // clear current state
+            finalize();
+
+            this->ptr = ptr;
+            this->cnt = new int(1);
+            this->del = del;
+#ifdef _debug_
+            std::cerr << "  ->reset called \n";
+#endif
+        }
+    }
 };
 
 
